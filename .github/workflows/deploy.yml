@@ -28,8 +28,15 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - name: Accuracy benchmark (fails on regression)
-        run: npm run bench
+      - name: Cache SmartDoc 2015 frames
+        uses: actions/cache@v4
+        with:
+          path: bench/data/smartdoc
+          key: smartdoc15-ch1-v2.0.0
+      - name: Fetch SmartDoc 2015 frames (1 GB, cached)
+        run: npm run data:smartdoc
+      - name: Accuracy benchmark on synthetic + real frames (fails on regression)
+        run: npm run bench -- --smartdoc bench/data/smartdoc --stride 20
       - run: npx playwright install --with-deps chromium
       - name: End-to-end (fake camera)
         run: npm run e2e

@@ -15,7 +15,8 @@ describe('refineQuad', () => {
     for (let s = 0; s < 24; s++) {
       const c = randomCase(1000 + s, 640, 480)
       const gray = toGray(c.image)
-      const coarse = c.quad.map((p) => ({ x: p.x + (r() - 0.5) * 10, y: p.y + (r() - 0.5) * 10 })) as Quad
+      // ±3px: the model's corner error on real photos is well inside this.
+      const coarse = c.quad.map((p) => ({ x: p.x + (r() - 0.5) * 6, y: p.y + (r() - 0.5) * 6 })) as Quad
       const res = refineQuad(gray, coarse, { radius: 10 })
       before.push(cornerErr(coarse, c.quad))
       after.push(cornerErr(res.quad, c.quad))

@@ -44,7 +44,9 @@ describe('processCapture', () => {
       const det = await detectDocument(small, runner)
       expect(det.detection).not.toBeNull()
       const quad = rescaleQuad(det.detection!.quad, size.width, size.height, W, H)
-      const res = processCapture(image, quad, { enhance: 'original' })
+      // Rendered edges are crisp, so full-res refinement can remove the model's
+      // synthetic-domain error; this test is about the geometry of the capture chain.
+      const res = processCapture(image, quad, { enhance: 'original', refine: true })
       expect(res.snapped).toBe('ISO A/B')
       expect(Math.abs(res.image.width / res.image.height - 210 / 297)).toBeLessThan(0.002)
       const ref = resizeRGBA(page, res.image.width, res.image.height)

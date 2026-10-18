@@ -18,7 +18,8 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "bench": "tsx bench/run-bench.ts",
-    "models": "node scripts/fetch-models.mjs"
+    "models": "node scripts/fetch-models.mjs",
+    "data:smartdoc": "test -f bench/data/smartdoc/metadata.csv.gz || (mkdir -p bench/data/smartdoc && curl -fsSL https://github.com/jchazalon/smartdoc15-ch1-dataset/releases/download/v2.0.0/frames.tar.gz | tar xz -C bench/data/smartdoc)"
   },
   "dependencies": {
     "comlink": "^4.4.2",
@@ -37,6 +38,7 @@
     "eslint": "^10.13.0",
     "eslint-plugin-vue": "^10.11.1",
     "fake-indexeddb": "^6.2.6",
+    "hyparquet": "^1.31.4",
     "jsdom": "^29.1.1",
     "onnxruntime-node": "^1.30.0",
     "sharp": "^0.35.5",

@@ -28,27 +28,38 @@ export interface RefineOptions {
   spacing: number
 }
 
-export const DEFAULT_REFINE: RefineOptions = { radius: 8, minGradient: 6, minSupport: 0.4, spacing: 4 }
+export const DEFAULT_REFINE: RefineOptions = {
+  radius: 8,
+  minGradient: 6,
+  minSupport: 0.4,
+  spacing: 4,
+}
 
-interface EdgeSample {
-  p: Point
-  strength: number
+/** Inward closeness prior width, as a fraction of the search radius. */
+const INWARD_SIGMA = 0.3
+
+/** One gradient extremum found on the normal profile of one sample point. */
+interface EdgeCand {
+  /** Sample index along the side. */
+  k: number
+  /** Position along the side, 0..1. */
+  t: number
   /** Signed offset from the coarse side along the outward normal, px. */
-  offset: number
+  s: number
+  /** Gradient magnitude (gray levels / px). */
+  mag: number
+  /** +1: brighter outside, −1: brighter inside. */
+  sign: number
+  p: Point
 }
 
 /**
- * Finds edge points along one side by searching the profile along the outward normal
- * for the strongest gradient of the side's dominant polarity, with parabolic
- * sub-pixel peak interpolation. A Gaussian prior on offset favours the predicted line
- * over interior content (text, photos) near the border.
+ * Collects every gradient extremum above `minGradient` along the outward normal at
+ * evenly spaced points of one side (sub-pixel via parabolic interpolation). Keeping all
+ * of them — not just the strongest — matters: a faint paper edge often sits next to a
+ * much stronger printed rule or text column just inside the border.
  */
-function sideSamples(
-  img: GrayImage,
-  a: Point,
-  b: Point,
-  opt: RefineOptions,
-): { pos: EdgeSample[]; neg: EdgeSample[]; total: number } {
+function sideCandidates(img: GrayImage, a: Point, b: Point, opt: RefineOptions): { cands: EdgeCand[]; total: number } {
   const len = dist(a, b)
   const d = { x: (b.x - a.x) / len, y: (b.y - a.y) / len }
   // Outward normal for clockwise (y-down) ordering.
@@ -59,11 +70,7 @@ function sideSamples(
   const L = 2 * steps + 1
   const profile = new Float32Array(L + 2)
   const deriv = new Float32Array(L)
-
-  type Cand = { pos: number; mag: number; sign: number }
-  const perSample: { base: Point; pos: Cand | null; neg: Cand | null }[] = []
-  const prior = (s: number) => Math.exp(-(s * s) / (2 * (opt.radius * 0.6) ** 2))
-
+  const cands: EdgeCand[] = []
   for (let k = 0; k < count; k++) {
     const t = 0.08 + (0.84 * (k + 0.5)) / count
     const base = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
@@ -72,34 +79,18 @@ function sideSamples(
       profile[i] = sampleGray(img, base.x + n.x * s, base.y + n.y * s)
     }
     for (let i = 0; i < L; i++) deriv[i] = (profile[i + 2]! - profile[i]!) / (2 * step)
-    let pos: Cand | null = null
-    let neg: Cand | null = null
     for (let i = 1; i < L - 1; i++) {
       const v = deriv[i]!
-      const s = (i - steps) * step
-      const score = Math.abs(v) * prior(s)
-      if (v > 0 && v >= deriv[i - 1]! && v >= deriv[i + 1]!) {
-        if (!pos || score > pos.mag * prior(pos.pos)) pos = { pos: s + subPixel(deriv, i) * step, mag: v, sign: 1 }
-      } else if (v < 0 && v <= deriv[i - 1]! && v <= deriv[i + 1]!) {
-        if (!neg || score > neg.mag * prior(neg.pos)) neg = { pos: s + subPixel(deriv, i) * step, mag: -v, sign: -1 }
-      }
+      const mag = Math.abs(v)
+      if (mag < opt.minGradient) continue
+      const isMax = v > 0 && v >= deriv[i - 1]! && v > deriv[i + 1]!
+      const isMin = v < 0 && v <= deriv[i - 1]! && v < deriv[i + 1]!
+      if (!isMax && !isMin) continue
+      const s = (i - steps + subPixel(deriv, i)) * step
+      cands.push({ k, t, s, mag, sign: v > 0 ? 1 : -1, p: { x: base.x + n.x * s, y: base.y + n.y * s } })
     }
-    perSample.push({ base, pos, neg })
   }
-
-  // Both polarities are kept: the paper edge can be either (bright paper on a dark desk or
-  // the reverse), and interior features such as a left-aligned text column produce a
-  // parallel edge of the opposite polarity just inside the border. fitSide decides.
-  const collect = (pick: (s: (typeof perSample)[number]) => Cand | null): EdgeSample[] => {
-    const out: EdgeSample[] = []
-    for (const s of perSample) {
-      const c = pick(s)
-      if (!c || c.mag < opt.minGradient) continue
-      out.push({ p: { x: s.base.x + n.x * c.pos, y: s.base.y + n.y * c.pos }, strength: c.mag, offset: c.pos })
-    }
-    return out
-  }
-  return { pos: collect((s) => s.pos), neg: collect((s) => s.neg), total: count }
+  return { cands, total: count }
 }
 
 function subPixel(v: Float32Array, i: number): number {
@@ -141,38 +132,86 @@ function fitLine(pts: readonly Point[], w: readonly number[]): Line | null {
 
 const lineResidual = (l: Line, p: Point): number => Math.abs((p.x - l.p.x) * l.d.y - (p.y - l.p.y) * l.d.x)
 
-/**
- * Fits one side: robust line fits for each edge polarity, then picks the one with the
- * best support weighted by closeness to the coarse prediction. When both are similarly
- * good, the outer line wins: a document's border lies outside its content.
- */
-export function fitSide(img: GrayImage, a: Point, b: Point, opt: RefineOptions = DEFAULT_REFINE): SideFit | null {
-  const { pos, neg, total } = sideSamples(img, a, b, opt)
-  const fits = [robustFit(pos, total, opt), robustFit(neg, total, opt)].filter((f): f is SideFit & { offset: number } => !!f)
-  if (!fits.length) return null
-  const sigma = opt.radius * 0.5
-  const score = (f: { support: number; offset: number }) => f.support * Math.exp(-(f.offset * f.offset) / (2 * sigma * sigma))
-  fits.sort((x, y) => score(y) - score(x))
-  let best = fits[0]!
-  const other = fits[1]
-  if (other && score(other) > 0.8 * score(best) && other.offset > best.offset) best = other
-  return { line: best.line, support: best.support, rms: best.rms }
+interface Hypothesis {
+  /** Offset model s(t) = s0 + s1·t relative to the coarse side. */
+  s0: number
+  s1: number
+  sign: number
+  /** Distinct samples supporting it. */
+  count: number
 }
 
-function robustFit(samples: EdgeSample[], total: number, opt: RefineOptions): (SideFit & { offset: number }) | null {
+/** Deterministic xorshift so refinement is reproducible frame to frame. */
+function prng(seed: number): () => number {
+  let x = seed | 0 || 1
+  return () => {
+    x ^= x << 13
+    x ^= x >>> 17
+    x ^= x << 5
+    return (x >>> 0) / 4294967296
+  }
+}
+
+/**
+ * RANSAC over (t, offset) for one polarity: each hypothesis is a straight edge near the
+ * coarse side (allowing a small tilt). Returns distinct hypotheses ranked by how many
+ * sample points support them — continuity along the side, not contrast, is what makes
+ * the paper border stand out.
+ */
+function hypotheses(cands: EdgeCand[], sign: number, tol: number): Hypothesis[] {
+  const c = cands.filter((x) => x.sign === sign)
+  if (c.length < 4) return []
+  const rand = prng(c.length * 7919 + sign)
+  const found: Hypothesis[] = []
+  const iterations = Math.min(400, c.length * 4)
+  for (let it = 0; it < iterations; it++) {
+    const a = c[Math.floor(rand() * c.length)]!
+    const b = c[Math.floor(rand() * c.length)]!
+    if (Math.abs(a.t - b.t) < 0.15) continue
+    const s1 = (b.s - a.s) / (b.t - a.t)
+    const s0 = a.s - s1 * a.t
+    let count = 0
+    let lastK = -1
+    for (const x of c) {
+      if (x.k !== lastK && Math.abs(x.s - (s0 + s1 * x.t)) <= tol) {
+        count++
+        lastK = x.k
+      }
+    }
+    found.push({ s0, s1, sign, count })
+  }
+  found.sort((x, y) => y.count - x.count)
+  // Non-maximum suppression: keep hypotheses whose mid-side offsets differ by > 2·tol.
+  const kept: Hypothesis[] = []
+  for (const h of found) {
+    const mid = h.s0 + h.s1 * 0.5
+    if (kept.every((k) => Math.abs(k.s0 + k.s1 * 0.5 - mid) > 2 * tol)) kept.push(h)
+    if (kept.length >= 4) break
+  }
+  return kept
+}
+
+/** Robust refit of one hypothesis in image space using its inlier points (one per sample). */
+function refit(cands: EdgeCand[], h: Hypothesis, tol: number, total: number, opt: RefineOptions): (SideFit & { offset: number }) | null {
+  const best = new Map<number, EdgeCand>()
+  for (const x of cands) {
+    if (x.sign !== h.sign) continue
+    const r = Math.abs(x.s - (h.s0 + h.s1 * x.t))
+    if (r > tol * 1.5) continue
+    const prev = best.get(x.k)
+    if (!prev || r < Math.abs(prev.s - (h.s0 + h.s1 * prev.t))) best.set(x.k, x)
+  }
+  const samples = [...best.values()]
   if (samples.length < Math.max(4, total * opt.minSupport)) return null
   const pts = samples.map((s) => s.p)
-  let w = samples.map((s) => Math.min(1, s.strength / (4 * opt.minGradient)))
-  let line = fitLine(pts, w)
+  const strength = samples.map((s) => Math.min(1, s.mag / (4 * opt.minGradient)))
+  let line = fitLine(pts, strength)
   if (!line) return null
-  const c = 1.5 // px, Tukey scale
-  for (let it = 0; it < 6; it++) {
-    const res = pts.map((p) => lineResidual(line!, p))
-    const med = [...res].sort((x, y) => x - y)[Math.floor(res.length / 2)]!
-    const scale = Math.max(c, 2.5 * med)
-    w = res.map((r, i) => {
-      const u = r / (2.5 * scale)
-      return u < 1 ? (1 - u * u) ** 2 * Math.min(1, samples[i]!.strength / (4 * opt.minGradient)) : 0
+  const c = 1.2 // px, Tukey scale
+  for (let it = 0; it < 4; it++) {
+    const w = pts.map((p, i) => {
+      const u = lineResidual(line!, p) / (2.5 * c)
+      return u < 1 ? (1 - u * u) ** 2 * strength[i]! : 0
     })
     const next = fitLine(pts, w)
     if (!next) return null
@@ -186,15 +225,39 @@ function robustFit(samples: EdgeSample[], total: number, opt: RefineOptions): (S
     if (r <= c) {
       inliers++
       ss += r * r
-      off += samples[i]!.offset
+      off += samples[i]!.s
     }
   })
-  return {
-    line,
-    support: inliers / total,
-    rms: inliers ? Math.sqrt(ss / inliers) : Infinity,
-    offset: inliers ? off / inliers : 0,
+  return { line, support: inliers / total, rms: inliers ? Math.sqrt(ss / inliers) : Infinity, offset: inliers ? off / inliers : 0 }
+}
+
+/**
+ * Fits one side of the document. Candidate straight edges of both polarities are found
+ * by RANSAC and scored by support (fraction of the side they cover) times closeness to
+ * the coarse prediction. Among comparably good candidates the outermost wins: the paper
+ * border lies outside anything printed on it.
+ */
+export function fitSide(img: GrayImage, a: Point, b: Point, opt: RefineOptions = DEFAULT_REFINE): SideFit | null {
+  const { cands, total } = sideCandidates(img, a, b, opt)
+  const tol = Math.max(0.75, Math.min(1.5, opt.radius / 8))
+  const fits = [...hypotheses(cands, 1, tol), ...hypotheses(cands, -1, tol)]
+    .map((h) => refit(cands, h, tol, total, opt))
+    .filter((f): f is SideFit & { offset: number } => !!f)
+  if (!fits.length) return null
+  // Asymmetric closeness prior: printed content (rules, text columns, photos) lies inside
+  // the border, so pulling a side inward is far more often wrong than pushing it out.
+  const sigmaOut = opt.radius * 0.5
+  const sigmaIn = opt.radius * INWARD_SIGMA
+  const score = (f: { support: number; offset: number }) => {
+    const sg = f.offset < 0 ? sigmaIn : sigmaOut
+    return f.support * Math.exp(-(f.offset * f.offset) / (2 * sg * sg))
   }
+  fits.sort((x, y) => score(y) - score(x))
+  let best = fits[0]!
+  for (const f of fits.slice(1)) {
+    if (score(f) >= 0.75 * score(fits[0]!) && f.offset > best.offset + tol) best = f
+  }
+  return { line: best.line, support: best.support, rms: best.rms }
 }
 
 export interface RefineResult {

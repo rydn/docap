@@ -17,7 +17,7 @@ export interface CaptureOptions {
 export const DEFAULT_CAPTURE: CaptureOptions = {
   enhance: 'color',
   snapPaper: true,
-  refine: true,
+  refine: false,
   // A4 at 300 dpi is 2480×3508; this keeps that and caps memory/time on phones.
   maxLongSide: 3600,
   maxPixels: 9e6,
