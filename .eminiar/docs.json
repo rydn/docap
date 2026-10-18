@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "name": "deploy-config",
+      "kind": "path",
+      "addedAt": "2026-10-18T13:22:44.693Z",
+      "path": ".",
+      "glob": [
+        "**/*.tf",
+        "**/*.tfvars.example",
+        "k8s/**/*.y?(a)ml",
+        "manifests/**/*.y?(a)ml",
+        "helm/**/*.y?(a)ml",
+        "charts/**/*.y?(a)ml",
+        "docker-compose*.y?(a)ml",
+        "compose*.y?(a)ml",
+        ".github/workflows/*.y?(a)ml"
+      ],
+      "title": "Terraform, Kubernetes, Helm, Compose and CI workflow files"
+    },
+    {
+      "name": "docaligner",
+      "kind": "url",
+      "addedAt": "2026-10-18T13:23:07.230Z",
+      "urls": [
+        "https://github.com/DocsaidLab/DocAligner",
+        "https://docsaid.org/en/docs/docaligner/"
+      ],
+      "crawl": {
+        "depth": 1,
+        "maxPages": 12
+      },
+      "notes": "DocAligner heatmap corner model (Apache-2.0); input img [1,3,256,256] /255, output heatmap [1,4,128,128]"
+    },
+    {
+      "name": "github",
+      "kind": "url",
+      "addedAt": "2026-10-18T13:22:44.693Z",
+      "urls": [
+        "https://docs.github.com/en/rest",
+        "https://docs.github.com/en/actions"
+      ],
+      "provider": "files:github-actions",
+      "title": "GitHub REST API & Actions",
+      "crawl": {
+        "depth": 2,
+        "maxPages": 150
+      }
+    },
+    {
+      "name": "mdn-media-capture",
+      "kind": "url",
+      "addedAt": "2026-10-18T13:23:07.230Z",
+      "urls": [
+        "https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia",
+        "https://developer.mozilla.org/en-US/docs/Web/API/ImageCapture",
+        "https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints",
+        "https://developer.mozilla.org/en-US/docs/Web/API/VideoFrame",
+        "https://developer.mozilla.org/en-US/docs/Web/API/HTMLVideoElement/requestVideoFrameCallback"
+      ],
+      "crawl": {
+        "depth": 0
+      },
+      "notes": "Camera capture APIs"
+    },
+    {
+      "name": "onnxruntime-web",
+      "kind": "url",
+      "addedAt": "2026-10-18T13:23:07.230Z",
+      "urls": [
+        "https://onnxruntime.ai/docs/tutorials/web/"
+      ],
+      "crawl": {
+        "depth": 1,
+        "maxPages": 15
+      },
+      "notes": "ORT web: WebGPU/WASM execution providers, wasmPaths, env flags"
+    },
+    {
+      "name": "opencv-js",
+      "kind": "url",
+      "addedAt": "2026-10-18T13:23:07.230Z",
+      "urls": [
+        "https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html"
+      ],
+      "crawl": {
+        "depth": 1,
+        "maxPages": 25
+      },
+      "notes": "OpenCV.js tutorials: Mat, contours, warpPerspective, imgproc"
+    },
+    {
+      "name": "readme",
+      "kind": "path",
+      "addedAt": "2026-10-18T13:22:44.693Z",
+      "path": ".",
+      "glob": [
+        "README.md"
+      ],
+      "title": "project readme and top-level guides"
+    },
+    {
+      "name": "vite-plugin-pwa",
+      "kind": "url",
+      "addedAt": "2026-10-18T13:23:07.230Z",
+      "urls": [
+        "https://vite-pwa-org.netlify.app/guide/"
+      ],
+      "crawl": {
+        "depth": 1,
+        "maxPages": 10
+      }
+    }
+  ]
+}

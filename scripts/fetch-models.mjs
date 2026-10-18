@@ -1,9 +1,9 @@
-// Downloads the DocAligner ONNX corner-heatmap models (Apache-2.0, DocsaidLab) into public/models.
+// Downloads the DocAligner ONNX corner-heatmap model (Apache-2.0, DocsaidLab) into public/models.
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 
 const RELEASE = 'https://github.com/DocsaidLab/DocAligner/releases/download/1.1.1/'
-const MODELS = ['lcnet100_h_e_bifpn_256_fp32.onnx', 'fastvit_t8_h_e_bifpn_256_fp32.onnx']
+const MODELS = ['lcnet100_h_e_bifpn_256_fp32.onnx']
 const dir = new URL('../public/models/', import.meta.url)
 mkdirSync(dir, { recursive: true })
 
