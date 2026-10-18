@@ -8,7 +8,7 @@ const browser = await chromium.launch({
   args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${FAKE_VIDEO}`],
 })
 const page = await (await browser.newContext({ ...devices['Pixel 7'], permissions: ['camera'] })).newPage()
-await page.goto('http://localhost:4173/docap/')
+await page.goto(process.argv[2] ?? 'http://localhost:4173/docap/')
 // With DOCAP_PAGES_LIKE=1 the server sends no isolation headers: the SW must add them.
 await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 15000 }).catch(() => undefined)
 await page.waitForLoadState('load')
