@@ -4,7 +4,7 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "DOM"],
     "types": ["node"],
     "strict": true,
     "skipLibCheck": true,
@@ -12,5 +12,5 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "bench/**/*.ts", "tests/e2e/**/*.ts"]
+  "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "bench/**/*.ts", "tests/e2e/**/*.ts", "src/pipeline/**/*.ts"]
 }

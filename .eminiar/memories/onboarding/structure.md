@@ -2,22 +2,21 @@
 name: onboarding/structure
 kind: onboarding
 tags: []
-related: [file:src/main.ts, file:src/App.vue, file:vite.config.ts, file:scripts/fetch-models.mjs, file:.github/workflows/deploy.yml]
+related: [file:src/App.vue, file:src/pipeline/detect.ts, file:src/worker/pipeline.worker.ts, file:src/camera/useScanner.ts, file:src/stores/queue.ts, file:bench/run-bench.ts, file:tests/e2e/scan.spec.ts]
 created: 2026-10-18T13:23:43.488Z
-updated: 2026-10-18T13:23:43.488Z
+updated: 2026-10-18T14:04:17.923Z
 ---
 
 Layout:
-- src/main.ts, src/App.vue — app entry.
-- src/pipeline/ — pure TS image pipeline, framework-free and runnable in Node tests: quad.ts (geometry, validation, IoU), homography/rectify.ts (aspect estimation + warp), detect-model.ts (DocAligner pre/post-process), detect-cv.ts (OpenCV.js contours), refine.ts (sub-pixel side refinement), tracker.ts (1-Euro + stability), sharpness.ts, phash.ts, enhance.ts.
-- src/worker/pipeline.worker.ts — Comlink API wrapping the pipeline.
-- src/camera/ — useCamera composable (constraints, ImageCapture, torch).
-- src/stores/ — Pinia stores (queue persisted to IndexedDB via idb-keyval).
-- src/components/ — CameraView, QuadOverlay, QueueTray, PageEditor, ExportBar.
-- src/export/ — ZIP export (fflate).
-- public/models/ — DocAligner ONNX weights (fetched by scripts/fetch-models.mjs).
-- bench/ — accuracy benchmark (Node) over synthetic + public datasets; bench/data and bench/out are gitignored.
-- tests/unit (Vitest), tests/e2e (Playwright with fake camera), tests/fixtures.
-- scripts/ — fetch-models.mjs, icons.mjs.
-- .github/workflows/deploy.yml — lint, test, build, deploy to Pages on push to main.
-- .eminiar/memories, .eminiar/docs.json — committed project knowledge.
+- src/main.ts, src/App.vue — app entry; App switches between CameraView, QueueSheet, PageEditor, SettingsSheet.
+- src/pipeline/ — pure TS image pipeline (no DOM/Vue; runs in worker, Vitest and Node bench identically):
+  types.ts, quad.ts (geometry, validation, IoU), homography.ts, aspect.ts (Zhang–He aspect, paper snapping, output size), image.ts (gray, area resample, blur, sharpness, small warps), model.ts (DocAligner pre/post-process + corner assignment), refine.ts (sub-pixel edge line fitting), detect.ts (model → refine → validate), signature.ts (duplicate page signature), tracker.ts (1-Euro, StabilityGate), autocapture.ts (capture state machine), process.ts (bicubic rectify + enhance), capture.ts (still → final page).
+- src/worker/ — pipeline.worker.ts (Comlink API: init, detect, capture, reprocess, preview; onnxruntime-web/wasm single-threaded), client.ts (two workers: detector + processor), types.ts.
+- src/camera/ — useCamera (getUserMedia, ImageCapture.takePhoto, torch, frame grabbing), useScanner (live loop, smoothing, auto-capture, capture dispatch, haptics/sound).
+- src/stores/ — queue.ts (Pinia + IndexedDB via idb-keyval: pages with page/thumb/still blobs, quad, rotation, enhance), settings.ts (localStorage).
+- src/components/ — CameraView, QuadOverlay (SVG, preserveAspectRatio slice = object-fit cover), QueueSheet, PageEditor (corner drag + loupe, rotate, filter), SettingsSheet, Icon.
+- src/export/zip.ts — fflate ZIP / single JPEG download.
+- public/models/ — DocAligner lcnet100 ONNX (committed). 
+- bench/ — synth.ts (synthetic scenes with exact GT), run-bench.ts (accuracy gates), node-runtime.ts (onnxruntime-node runner, sharp IO), dev/ (viz tools).
+- tests/unit (Vitest), tests/e2e (Playwright + Chromium fake camera from a generated Y4M; make-video.ts, screens.ts for screenshots).
+- .github/workflows/deploy.yml — lint, typecheck, unit, bench, e2e → build → Pages deploy (main only).

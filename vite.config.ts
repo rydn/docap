@@ -8,6 +8,9 @@ const base = process.env.DOCAP_BASE ?? '/docap/'
 
 export default defineConfig({
   base,
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? 'dev'),
+  },
   plugins: [
     vue(),
     VitePWA({
