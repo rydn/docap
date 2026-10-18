@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+*.local
+.DS_Store
+playwright-report
+test-results
+bench/data
+bench/out
+.eminiar/*
+!.eminiar/memories
+!.eminiar/docs.json

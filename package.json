@@ -1,0 +1,53 @@
+{
+  "name": "docap",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Hands-free document capture: detect, auto-capture, crop and deskew documents in the browser.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc -b",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "bench": "tsx bench/run-bench.ts",
+    "models": "node scripts/fetch-models.mjs"
+  },
+  "dependencies": {
+    "@techstark/opencv-js": "^4.12.0-release.1",
+    "comlink": "^4.4.2",
+    "fflate": "^0.8.3",
+    "idb-keyval": "^6.3.0",
+    "onnxruntime-web": "^1.30.0",
+    "pinia": "^4.1.0",
+    "vue": "^3.5.44"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/eslint-config-typescript": "^14.9.0",
+    "@vue/test-utils": "^2.5.1",
+    "eslint": "^10.13.0",
+    "eslint-plugin-vue": "^10.11.1",
+    "fake-indexeddb": "^6.2.6",
+    "jsdom": "^29.1.1",
+    "onnxruntime-node": "^1.30.0",
+    "sharp": "^0.35.5",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vite": "^8.3.4",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.0.5",
+    "vue-tsc": "^3.3.13",
+    "workbox-window": "^7.4.1"
+  }
+}
