@@ -131,9 +131,12 @@ async function realSuite(runner: HeatmapRunner, dir: string): Promise<Suite> {
   return { name: `real:${dir}`, results }
 }
 
-const GATES: Record<string, { meanIoU: number; detectionRate: number; falsePositiveRate?: number }> = {
-  synthetic: { meanIoU: 0.98, detectionRate: 0.97, falsePositiveRate: 0.02 },
-  'synthetic-hard': { meanIoU: 0.95, detectionRate: 0.9, falsePositiveRate: 0.05 },
+// Mean IoU counts a missed frame as 0 (SmartDoc convention), so it mostly measures
+// detection rate; p05 measures how bad the worst detections are. In live use a missed
+// frame only delays capture, while a bad quad produces a bad scan — p05 matters most.
+const GATES: Record<string, { meanIoU: number; p05IoU: number; detectionRate: number; falsePositiveRate?: number }> = {
+  synthetic: { meanIoU: 0.97, p05IoU: 0.95, detectionRate: 0.97, falsePositiveRate: 0.02 },
+  'synthetic-hard': { meanIoU: 0.96, p05IoU: 0.93, detectionRate: 0.95, falsePositiveRate: 0.05 },
 }
 
 const runner = await nodeRunner('lcnet100')
@@ -156,7 +159,7 @@ let failed = false
 for (const s of summary) {
   const g = GATES[s.suite]
   if (!g) continue
-  if (s.meanIoU < g.meanIoU || s.detectionRate < g.detectionRate || (g.falsePositiveRate !== undefined && (s.falsePositiveRate ?? 0) > g.falsePositiveRate)) {
+  if (s.meanIoU < g.meanIoU || s.p05IoU < g.p05IoU || s.detectionRate < g.detectionRate || (g.falsePositiveRate !== undefined && (s.falsePositiveRate ?? 0) > g.falsePositiveRate)) {
     console.error(`GATE FAILED: ${s.suite}`, g)
     failed = true
   }

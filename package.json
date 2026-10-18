@@ -21,7 +21,6 @@
     "models": "node scripts/fetch-models.mjs"
   },
   "dependencies": {
-    "@techstark/opencv-js": "^4.12.0-release.1",
     "comlink": "^4.4.2",
     "fflate": "^0.8.3",
     "idb-keyval": "^6.3.0",

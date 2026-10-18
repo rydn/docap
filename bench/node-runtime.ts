@@ -36,16 +36,3 @@ export async function saveImage(img: RGBAImage, path: string): Promise<void> {
     .toFile(path)
 }
 
-let cvPromise: Promise<unknown> | null = null
-/** Loads OpenCV.js (WASM) in Node. */
-export function loadCv(): Promise<typeof import('@techstark/opencv-js')> {
-  cvPromise ??= (async () => {
-    const mod = await import('@techstark/opencv-js')
-    let cv = (mod as { default?: unknown }).default ?? mod
-    if (cv instanceof Promise) cv = await cv
-    const c = cv as { Mat?: unknown; onRuntimeInitialized?: () => void }
-    if (!c.Mat) await new Promise<void>((res) => (c.onRuntimeInitialized = res))
-    return cv
-  })()
-  return cvPromise as Promise<typeof import('@techstark/opencv-js')>
-}
