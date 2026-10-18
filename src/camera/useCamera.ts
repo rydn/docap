@@ -1,4 +1,5 @@
 import { onBeforeUnmount, ref, shallowRef, type Ref } from 'vue'
+import { diagnostics } from '@/stores/diagnostics'
 
 export type CameraError = 'denied' | 'not-found' | 'insecure' | 'unsupported' | 'failed'
 
@@ -71,6 +72,7 @@ export function useCamera(video: Ref<HTMLVideoElement | null>) {
     await el.play()
     await new Promise<void>((res) => (el.videoWidth ? res() : el.addEventListener('loadedmetadata', () => res(), { once: true })))
     videoSize.value = { width: el.videoWidth, height: el.videoHeight }
+    diagnostics.video = `${el.videoWidth}×${el.videoHeight}${imageCapture ? ' + photo' : ''}`
     el.addEventListener('resize', () => (videoSize.value = { width: el.videoWidth, height: el.videoHeight }))
     ready.value = true
     return true

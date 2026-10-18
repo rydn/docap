@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { EnhanceMode } from '@/pipeline/process'
+import { diagnostics } from '@/stores/diagnostics'
 import { useSettings } from '@/stores/settings'
 import Icon from './Icon.vue'
 
@@ -60,6 +61,10 @@ const version = __APP_VERSION__
         </span>
         <input v-model="settings.sound" type="checkbox" role="switch" />
       </label>
+      <p v-if="diagnostics.backend" class="fine diag">
+        Camera {{ diagnostics.video }} · detector {{ diagnostics.backend }} (loaded in {{ diagnostics.loadMs }} ms) · {{ diagnostics.detectMs }} ms/frame ·
+        {{ diagnostics.fps }} fps<template v-if="diagnostics.lastCaptureMs"> · last page {{ diagnostics.lastCaptureMs }} ms</template>
+      </p>
       <p class="fine">docap {{ version }} · runs entirely on your device</p>
     </div>
   </div>

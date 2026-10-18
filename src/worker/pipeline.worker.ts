@@ -18,11 +18,11 @@ const ANALYSIS_SIDE = 720
 let runner: HeatmapRunner | null = null
 let initPromise: Promise<{ backend: string; loadMs: number }> | null = null
 
-async function createRunner(): Promise<{ backend: string; loadMs: number }> {
+async function createRunner(threads: number): Promise<{ backend: string; loadMs: number }> {
   const t0 = performance.now()
   ort.env.wasm.wasmPaths = { wasm: wasmUrl }
-  // Pages can't send COOP/COEP headers, so threads are unavailable unless isolated.
-  ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 2) : 1
+  // Threads need SharedArrayBuffer, i.e. cross-origin isolation (provided by src/sw.ts).
+  ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.max(1, Math.min(threads, (navigator.hardwareConcurrency || 2) - 1)) : 1
   const res = await fetch(`${import.meta.env.BASE_URL}models/${MODELS.lcnet100}`)
   if (!res.ok) throw new Error(`model download failed: HTTP ${res.status}`)
   const session = await ort.InferenceSession.create(new Uint8Array(await res.arrayBuffer()), {
@@ -97,8 +97,8 @@ async function finish(still: RGBAImage, quad: Quad, opts: Partial<CaptureOptions
 }
 
 const api = {
-  init() {
-    initPromise ??= createRunner()
+  init(threads = 4) {
+    initPromise ??= createRunner(threads)
     return initPromise
   },
 

@@ -3,6 +3,7 @@ import { AutoCapture, type CaptureState } from '@/pipeline/autocapture'
 import type { DetectFailure } from '@/pipeline/detect'
 import { QuadSmoother } from '@/pipeline/tracker'
 import type { Quad } from '@/pipeline/types'
+import { diagnostics } from '@/stores/diagnostics'
 import { useQueue } from '@/stores/queue'
 import { useSettings } from '@/stores/settings'
 import { detectorWorker, processorWorker, Comlink } from '@/worker/client'
@@ -52,8 +53,11 @@ export function useScanner(camera: ReturnType<typeof useCamera>, video: Ref<HTML
 
   async function init(): Promise<void> {
     try {
-      const [d] = await Promise.all([detectorWorker().init(), processorWorker().init()])
+      // Live detection gets most threads; capture processing is off the critical path.
+      const [d] = await Promise.all([detectorWorker().init(4), processorWorker().init(2)])
       stats.value = { ...stats.value, backend: d.backend, loadMs: d.loadMs }
+      diagnostics.backend = d.backend
+      diagnostics.loadMs = d.loadMs
       modelReady.value = true
     } catch (e) {
       modelError.value = (e as Error).message
@@ -100,6 +104,9 @@ export function useScanner(camera: ReturnType<typeof useCamera>, video: Ref<HTML
     frames++
     if (t - fpsT0 > 1000) {
       stats.value = { ...stats.value, fps: Math.round((frames * 1000) / (t - fpsT0)), detectMs: res.ms }
+      diagnostics.fps = stats.value.fps
+      diagnostics.detectMs = res.ms
+      diagnostics.frame = `${res.width}×${res.height}`
       frames = 0
       fpsT0 = t
     }
@@ -149,6 +156,7 @@ export function useScanner(camera: ReturnType<typeof useCamera>, video: Ref<HTML
       const out = await processorWorker().capture(
         Comlink.transfer({ still, hint, hintAspect, options: { enhance: settings.enhance, snapPaper: settings.snapPaper } }, [still]),
       )
+      diagnostics.lastCaptureMs = out.ms
       await queue.complete(id, {
         page: out.page,
         thumb: out.thumb,
